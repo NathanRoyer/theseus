@@ -1,0 +1,28 @@
+[package]
+authors = ["Kevin Boos <kevinaboos@gmail.com>"]
+name = "tlb_shootdown"
+description = "Routines for handling TLB shootdowns"
+version = "0.1.0"
+
+[dependencies]
+x86_64 = "0.14.8"
+
+
+[dependencies.log]
+version = "0.4.8"
+
+[dependencies.irq_safety]
+git = "https://github.com/theseus-os/irq_safety"
+
+[dependencies.memory]
+path = "../memory"
+
+[dependencies.apic]
+path = "../apic"
+
+[dependencies.pause]
+path = "../pause"
+
+
+[lib]
+crate-type = ["rlib"]

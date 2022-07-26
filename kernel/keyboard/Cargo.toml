@@ -1,0 +1,25 @@
+[package]
+authors = ["Kevin Boos <kevinaboos@gmail.com>"]
+name = "keyboard"
+description = "The keyboard driver"
+version = "0.1.0"
+
+[dependencies]
+spin = "0.9.0"
+mpmc = "0.1.6"
+
+[dependencies.log]
+version = "0.4.8"
+
+[dependencies.keycodes_ascii]
+path = "../../libs/keycodes_ascii"
+
+[dependencies.event_types]
+path = "../event_types"
+
+[dependencies.ps2]
+path = "../ps2"
+
+
+[lib]
+crate-type = ["rlib"]

@@ -1,0 +1,55 @@
+[package]
+authors = ["Ramla Ijaz <ijazramla@gmail.com>"]
+name = "e1000"
+description = "Support for the e1000 NIC and driver"
+version = "0.1.0"
+
+[dependencies]
+spin = "0.9.0"
+volatile = "0.2.7"
+x86_64 = "0.14.8"
+owning_ref = { git = "https://github.com/theseus-os/owning-ref-rs" }
+zerocopy = "0.5.0"
+static_assertions = "1.1.0"
+mpmc = "0.1.6"
+
+
+[dependencies.log]
+version = "0.4.8"
+
+[dependencies.lazy_static]
+features = ["spin_no_std"]
+version = "1.4.0"
+
+[dependencies.irq_safety]
+git = "https://github.com/theseus-os/irq_safety"
+
+[dependencies.kernel_config]
+path = "../kernel_config"
+
+[dependencies.memory]
+path = "../memory"
+
+[dependencies.pci]
+path = "../pci"
+
+[dependencies.interrupts]
+path = "../interrupts"
+
+[dependencies.network_interface_card]
+path = "../network_interface_card"
+
+[dependencies.intel_ethernet]
+path = "../intel_ethernet" 
+
+[dependencies.nic_buffers]
+path = "../nic_buffers"
+
+[dependencies.nic_queues]
+path = "../nic_queues"
+
+[dependencies.nic_initialization]
+path = "../nic_initialization"
+
+[lib]
+crate-type = ["rlib"]

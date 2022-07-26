@@ -1,0 +1,25 @@
+[package]
+name = "framebuffer"
+version = "0.1.0"
+authors = ["Wenqiu Yu <yuwenqiuj@gmail.com>"]
+description = "a framebuffer is a buffer of pixels which can be composited to another framebuffer or be mapped to some physical memory"
+
+[dependencies]
+log = "0.4.8"
+owning_ref = { git = "https://github.com/theseus-os/owning-ref-rs" }
+zerocopy = "0.5.0"
+
+[dependencies.memory]
+path = "../memory"
+
+[dependencies.multicore_bringup]
+path = "../multicore_bringup"
+
+[dependencies.shapes]
+path = "../shapes"
+
+[dependencies.color]
+path = "../color"
+
+[lib]
+crate-type = ["rlib"]

@@ -1,0 +1,33 @@
+[package]
+name = "fault_log"
+version = "0.1.0"
+description = "Logs all exceptions occuring in Theseus"
+authors = ["Namitha Liyanage <namithaliyanage@gmail.com>"]
+
+
+[dependencies.lazy_static]
+features = ["spin_no_std"]
+version = "1.4.0"
+
+[dependencies.irq_safety]
+git = "https://github.com/theseus-os/irq_safety"
+
+[dependencies.memory]
+path = "../memory"
+
+[dependencies.vga_buffer]
+path = "../vga_buffer"
+
+[dependencies.print]
+path = "../print"
+
+[dependencies.task]
+path = "../task"
+
+[dependencies.apic]
+path = "../apic"
+
+[dependencies.log]
+default-features = false
+version = "0.4.8"
+

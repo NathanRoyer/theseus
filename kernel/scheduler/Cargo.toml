@@ -1,0 +1,39 @@
+[package]
+authors = ["Kevin Boos <kevinaboos@gmail.com>"]
+name = "scheduler"
+description = "Provides scheduling functionality for selecting the next task and causing a task switch"
+version = "0.1.0"
+
+
+[dependencies]
+spin = "0.9.0"
+
+[dependencies.log]
+version = "0.4.8"
+
+[dependencies.cfg-if]
+version = "1.0.0"
+
+[dependencies.irq_safety]
+git = "https://github.com/theseus-os/irq_safety"
+
+[dependencies.apic]
+path= "../apic"
+
+[dependencies.task]
+path = "../task"
+
+[dependencies.runqueue]
+path = "../runqueue"
+
+[dependencies.scheduler_round_robin]
+path = "../scheduler_round_robin"
+
+[dependencies.scheduler_priority]
+path = "../scheduler_priority"
+
+[dependencies.scheduler_realtime]
+path = "../scheduler_realtime"
+
+[lib]
+crate-type = ["rlib"]
