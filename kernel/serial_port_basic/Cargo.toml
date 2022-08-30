@@ -7,8 +7,12 @@ version = "0.1.0"
 [dependencies]
 spin = "0.9.0"
 
-[dependencies.port_io]
-path = "../../libs/port_io"
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+port_io = { path = "../../libs/port_io" }
+
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+pl011_qemu = { git = "https://github.com/theseus-os/pl011" }
+embedded-hal = "0.2.4"
 
 [dependencies.irq_safety]
 git = "https://github.com/theseus-os/irq_safety"
