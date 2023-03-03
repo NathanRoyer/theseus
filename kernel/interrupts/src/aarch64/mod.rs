@@ -123,8 +123,21 @@ pub fn init() -> Result<(), &'static str> {
 pub fn enable_timer_interrupts(enable: bool) -> Result<(), &'static str> {
     // called everytime the timer ticks.
     extern "C" fn timer_handler(_exc: &ExceptionContext) -> bool {
-        info!("timer int!");
-        loop {}
+        let should_schedule = preemption::preemption_enabled();
+
+        if should_schedule {
+            // Callback to the sleep API to unblock tasks whose waiting time is over
+            // and alert to update the number of ticks elapsed
+            sleep::unblock_sleeping_tasks();
+        }
+
+        eoi(AARCH64_TIMER_IRQ);
+
+        if should_schedule {
+            scheduler::schedule();
+        }
+
+        true
     }
 
     // register the handler for the timer IRQ.

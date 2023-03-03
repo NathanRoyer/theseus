@@ -28,7 +28,7 @@ use memory::VirtualAddress;
 
 
 /// The GDT list, one per core, indexed by a key of apic_id
-static GDT: AtomicMap<u8, Gdt> = AtomicMap::new();
+static GDT: AtomicMap<CpuId, Gdt> = AtomicMap::new();
 
 
 static KERNEL_CODE_SELECTOR:  Once<SegmentSelector> = Once::new();
@@ -78,7 +78,7 @@ impl AvailableSegmentSelector {
 /// such that the segment selectors are usable 
 /// Future invocations will not change those initial values and load the same GDT based on them.
 pub fn create_and_load_tss_gdt(
-    apic_id: u8, 
+    apic_id: CpuId, 
     double_fault_stack_top_unusable: VirtualAddress, 
     privilege_stack_top_unusable: VirtualAddress
 ) { 

@@ -12,12 +12,13 @@
 
 extern crate alloc;
 #[macro_use] extern crate log;
+extern crate cpu;
 extern crate task;
 extern crate runqueue_priority;
 
 use task::TaskRef;
 use runqueue_priority::{RunQueue, MAX_PRIORITY};
-
+use cpu::CpuId;
 
 /// A data structure to transfer data from select_next_task_priority
 /// to select_next_task
@@ -40,7 +41,7 @@ pub fn get_priority(task: &TaskRef) -> Option<u8> {
 
 /// This defines the priority scheduler policy.
 /// Returns None if there is no schedule-able task.
-pub fn select_next_task(apic_id: u8) -> Option<TaskRef>  {
+pub fn select_next_task(apic_id: CpuId) -> Option<TaskRef>  {
     let priority_taskref_with_result = select_next_task_priority(apic_id); 
     match priority_taskref_with_result {
         // A task has been selected
@@ -67,7 +68,7 @@ pub fn select_next_task(apic_id: u8) -> Option<TaskRef>  {
 /// this defines the priority scheduler policy.
 /// Returns None if there is no schedule-able task.
 /// Otherwise returns a task with a flag indicating whether its an idle task.
-fn select_next_task_priority(apic_id: u8) -> Option<NextTaskResult>  {
+fn select_next_task_priority(apic_id: CpuId) -> Option<NextTaskResult>  {
 
     let mut runqueue_locked = match RunQueue::get_runqueue(apic_id) {
         Some(rq) => rq.write(),
@@ -98,7 +99,7 @@ fn select_next_task_priority(apic_id: u8) -> Option<NextTaskResult>  {
         if let Some(pinned) = t.pinned_core() {
             if pinned != apic_id {
                 // with per-core runqueues, this should never happen!
-                error!("select_next_task() (AP {}) found a task pinned to a different core: {:?}", apic_id, t);
+                error!("select_next_task() (AP {:?}) found a task pinned to a different core: {:?}", apic_id, t);
                 return None;
             }
         }
@@ -137,7 +138,7 @@ fn select_next_task_priority(apic_id: u8) -> Option<NextTaskResult>  {
 /// This assigns tokens between tasks.
 /// Returns true if successful.
 /// Tokens are assigned based on  (prioirty of each task / prioirty of all tasks).
-fn assign_tokens(apic_id: u8) -> bool  {
+fn assign_tokens(apic_id: CpuId) -> bool  {
 
     let mut runqueue_locked = match RunQueue::get_runqueue(apic_id) {
         Some(rq) => rq.write(),
@@ -168,7 +169,7 @@ fn assign_tokens(apic_id: u8) -> bool  {
         if let Some(pinned) = t.pinned_core() {
             if pinned != apic_id {
                 // with per-core runqueues, this should never happen!
-                error!("select_next_task() (AP {}) found a task pinned to a different core: {:?}", apic_id, t);
+                error!("select_next_task() (AP {:?}) found a task pinned to a different core: {:?}", apic_id, t);
                 return false;
             }
         }
@@ -208,7 +209,7 @@ fn assign_tokens(apic_id: u8) -> bool  {
         if let Some(pinned) = t.pinned_core() {
             if pinned != apic_id {
                 // with per-core runqueues, this should never happen!
-                error!("select_next_task() (AP {}) found a task pinned to a different core: {:?}", apic_id, &*t);
+                error!("select_next_task() (AP {:?}) found a task pinned to a different core: {:?}", apic_id, &*t);
                 return false;
             }
         }

@@ -6,18 +6,12 @@ version = "0.1.0"
 
 [dependencies]
 spin = "0.9.4"
+log = "0.4.8"
 
-[dependencies.log]
-version = "0.4.8"
-
-[dependencies.task]
-path = "../task"
-
-[dependencies.runqueue]
-path = "../runqueue"
-
-[dependencies.runqueue_round_robin]
-path = "../runqueue_round_robin"
+cpu = { path = "../cpu" }
+task = { path = "../task" }
+runqueue = { path = "../runqueue" }
+runqueue_round_robin = { path = "../runqueue_round_robin" }
 
 [lib]
 crate-type = ["rlib"]

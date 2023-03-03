@@ -8,9 +8,12 @@ edition = "2021"
 [dependencies]
 log = "0.4.8"
 memory = { path = "../memory" }
+sleep = { path = "../sleep" }
+scheduler = { path = "../scheduler" }
 
 [target.'cfg(target_arch = "aarch64")'.dependencies]
 irq_safety = { git = "https://github.com/theseus-os/irq_safety" }
+preemption = { path = "../preemption" }
 gic = { path = "../gic" }
 tock-registers = "0.7.0"
 cortex-a = "7.5.0"
@@ -18,8 +21,6 @@ cortex-a = "7.5.0"
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 exceptions_early = { path = "../exceptions_early" }
 vga_buffer = { path = "../vga_buffer" }
-scheduler = { path = "../scheduler" }
-sleep = { path = "../sleep" }
 apic = { path = "../apic" }
 gdt = { path = "../gdt" }
 pic = { path = "../pic" }

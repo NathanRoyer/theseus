@@ -112,7 +112,8 @@ impl TlsInitializer {
         }
 
         // Calculate the new value of this section's virtual address based on its offset.
-        let starting_offset = (total_static_tls_size - offset).wrapping_neg();
+        let starting_offset = (total_static_tls_size - offset).wrapping_neg(); // = 16
+        panic!("yo! 0x{:x} - 0x{:x} = 0x{:x}", total_static_tls_size, offset, starting_offset);
         tls_section.virt_addr = VirtualAddress::new(starting_offset).ok_or(())?;
         self.end_of_static_sections = max(self.end_of_static_sections, range.end);
         let section_ref = Arc::new(tls_section);

@@ -9,6 +9,7 @@ extern crate alloc;
 extern crate mutex_preemption;
 extern crate atomic_linked_list;
 extern crate task;
+extern crate cpu;
 #[macro_use] extern crate cfg_if;
 cfg_if! {
     if #[cfg(priority_scheduler)] {
@@ -25,21 +26,22 @@ extern crate single_simd_task_optimization;
 
 use mutex_preemption::RwLockPreempt;
 use task::TaskRef;
+use cpu::CpuId;
 use runqueue::RunQueue;
 
 
 /// Creates a new `RunQueue` for the given core, which is an `apic_id`.
-pub fn init(which_core: u8) -> Result<(), &'static str> {
+pub fn init(which_core: CpuId) -> Result<(), &'static str> {
     RunQueue::init(which_core)
 }
 
 /// Returns the `RunQueue` of the given core, which is an `apic_id`.
-pub fn get_runqueue(which_core: u8) -> Option<&'static RwLockPreempt<RunQueue>> {
+pub fn get_runqueue(which_core: CpuId) -> Option<&'static RwLockPreempt<RunQueue>> {
     RunQueue::get_runqueue(which_core)
 }
 
 /// Returns the "least busy" core
-pub fn get_least_busy_core() -> Option<u8> {
+pub fn get_least_busy_core() -> Option<CpuId> {
     RunQueue::get_least_busy_core()
 }
 
@@ -50,7 +52,7 @@ pub fn add_task_to_any_runqueue(task: TaskRef) -> Result<(), &'static str> {
 }
 
 /// Adds the given `Task` reference to given core's runqueue.
-pub fn add_task_to_specific_runqueue(which_core: u8, task: TaskRef) -> Result<(), &'static str> {
+pub fn add_task_to_specific_runqueue(which_core: CpuId, task: TaskRef) -> Result<(), &'static str> {
     RunQueue::add_task_to_specific_runqueue(which_core, task)
 }
 

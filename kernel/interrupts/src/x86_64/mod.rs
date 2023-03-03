@@ -144,7 +144,7 @@ pub fn init(
 
 /// Similar to `init()`, but for APs to call after the BSP has already invoked `init()`.
 pub fn init_ap(
-    apic_id: u8, 
+    apic_id: CpuId, 
     double_fault_stack_top_unusable: VirtualAddress, 
     privilege_stack_top_unusable: VirtualAddress,
 ) -> Result<&'static LockedIdt, &'static str> {

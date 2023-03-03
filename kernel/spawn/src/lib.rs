@@ -37,6 +37,7 @@ use path::Path;
 use fs_node::FileOrDir;
 use preemption::{hold_preemption, PreemptionGuard};
 use no_drop::NoDrop;
+use cpu::{CpuId, OptionalCpuId};
 
 #[cfg(simd_personality)]
 use task::SimdExt;
@@ -46,7 +47,7 @@ use task::SimdExt;
 /// and creating its initial task bootstrapped from the current execution context.
 pub fn init(
     kernel_mmi_ref: MmiRef,
-    apic_id: u8,
+    apic_id: CpuId,
     stack: NoDrop<Stack>,
 ) -> Result<BootstrapTaskRef, &'static str> {
     runqueue::init(apic_id)?;
@@ -118,7 +119,7 @@ pub fn cleanup_bootstrap_tasks(num_tasks: usize) -> Result<(), &'static str> {
 #[derive(Debug)]
 pub struct BootstrapTaskRef {
     #[allow(dead_code)]
-    apic_id: u8,
+    apic_id: CpuId,
     exitable_taskref: ExitableTaskRef,
 }
 impl Deref for BootstrapTaskRef {
@@ -270,7 +271,7 @@ pub struct TaskBuilder<F, A, R> {
     name: Option<String>,
     stack: Option<Stack>,
     parent: Option<TaskRef>,
-    pin_on_core: Option<u8>,
+    pin_on_core: OptionalCpuId,
     blocked: bool,
     idle: bool,
     post_build_function: Option<Box<
@@ -296,7 +297,7 @@ impl<F, A, R> TaskBuilder<F, A, R>
             name: None,
             stack: None,
             parent: None,
-            pin_on_core: None,
+            pin_on_core: None.into(),
             blocked: false,
             idle: false,
             post_build_function: None,
@@ -334,8 +335,8 @@ impl<F, A, R> TaskBuilder<F, A, R>
     }
 
     /// Pin the new Task to a specific core.
-    pub fn pin_on_core(mut self, core_apic_id: u8) -> TaskBuilder<F, A, R> {
-        self.pin_on_core = Some(core_apic_id);
+    pub fn pin_on_core(mut self, core_apic_id: CpuId) -> TaskBuilder<F, A, R> {
+        self.pin_on_core = Some(core_apic_id).into();
         self
     }
 
@@ -424,7 +425,7 @@ impl<F, A, R> TaskBuilder<F, A, R>
         // (in `spawn::task_cleanup_final_internal()`).
         fence(Ordering::Release);
         
-        if let Some(core) = self.pin_on_core {
+        if let Some(core) = self.pin_on_core.into() {
             runqueue::add_task_to_specific_runqueue(core, task_ref.clone())?;
         } else {
             runqueue::add_task_to_any_runqueue(task_ref.clone())?;
@@ -457,7 +458,7 @@ impl<F, A, R> TaskBuilder<F, A, R>
     /// but or to restart an idle task that has exited or failed.
     /// 
     /// There is no harm spawning multiple idle tasks on each core, but it's a waste of space. 
-    pub fn idle(mut self, core_id: u8) -> TaskBuilder<F, A, R> {
+    pub fn idle(mut self, core_id: CpuId) -> TaskBuilder<F, A, R> {
         self.idle = true;
         self.pin_on_core(core_id)
     }
@@ -1002,10 +1003,10 @@ fn remove_current_task_from_runqueue(current_task: &ExitableTaskRef) {
 /// Spawns an idle task on the current CPU and adds it to this CPU's runqueue.
 pub fn create_idle_task() -> Result<JoinableTaskRef, &'static str> {
     let apic_id = cpu::current_cpu();
-    debug!("Spawning a new idle task on core {}", apic_id);
+    debug!("Spawning a new idle task on core {:?}", apic_id);
 
     new_task_builder(idle_task_entry, apic_id)
-        .name(format!("idle_task_core_{apic_id}"))
+        .name(format!("idle_task_core_{apic_id:?}"))
         .idle(apic_id)
         .spawn_restartable(None)
 }
@@ -1015,8 +1016,8 @@ pub fn create_idle_task() -> Result<JoinableTaskRef, &'static str> {
 /// Note: the current spawn API does not support spawning a task with the return type `!`,
 /// so we use `()` here instead. 
 #[inline(never)]
-fn idle_task_entry(_apic_id: u8) {
-    info!("Entered idle task loop on core {}: {:?}", cpu::current_cpu(), task::get_my_current_task());
+fn idle_task_entry(_apic_id: CpuId) {
+    info!("Entered idle task loop on core {:?}: {:?}", cpu::current_cpu(), task::get_my_current_task());
     loop {
         // TODO: put this core into a low-power state
         pause::spin_loop_hint();

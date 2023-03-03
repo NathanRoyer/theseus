@@ -35,6 +35,7 @@ use mod_mgmt::{AppCrateRef, CrateNamespace, TlsDataImage};
 use environment::Environment;
 use spin::Mutex;
 use preemption::PreemptionGuard;
+use cpu::{CpuId, OptionalCpuId};
 
 /// The function signature of the callback that will be invoked when a `Task`
 /// panics or otherwise fails, e.g., a machine exception occurs.
@@ -158,29 +159,6 @@ pub struct RestartInfo {
     pub func: Box<dyn Any + Send>,
 }
 
-
-/// A wrapper around `Option<u8>` with a forced type alignment of 2 bytes,
-/// which guarantees that it compiles down to lock-free native atomic instructions
-/// when using it inside of an atomic type like [`AtomicCell`].
-#[derive(Copy, Clone)]
-#[repr(align(2))]
-pub struct OptionU8(Option<u8>);
-impl From<Option<u8>> for OptionU8 {
-    fn from(opt: Option<u8>) -> Self {
-        OptionU8(opt)
-    }
-}
-impl From<OptionU8> for Option<u8> {
-    fn from(val: OptionU8) -> Self {
-        val.0
-    }
-}
-impl fmt::Debug for OptionU8 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
 /// The parts of a `Task` that may be modified after its creation.
 ///
 /// This includes only the parts that cannot be modified atomically.
@@ -219,7 +197,7 @@ pub struct TaskInner {
     pub kstack: Stack,
     /// Whether or not this task is pinned to a certain core.
     /// The idle tasks are always pinned to their respective cores.
-    pub pinned_core: Option<u8>,
+    pub pinned_core: OptionalCpuId,
     /// The function that will be called when this `Task` panics or fails due to a machine exception.
     /// It will be invoked before the task is cleaned up via stack unwinding.
     /// This is similar to Rust's built-in panic hook, but is also called upon a machine exception, not just a panic.
@@ -255,11 +233,9 @@ pub struct Task {
     pub name: String,
     /// Which cpu core this Task is currently running on;
     /// `None` if not currently running.
-    /// We use `OptionU8` instead of `Option<u8>` to ensure that 
-    /// this field is accessed using lock-free native atomic instructions.
-    ///
+    ///    
     /// This is not public because it permits interior mutability.
-    running_on_cpu: AtomicCell<OptionU8>,
+    running_on_cpu: AtomicCell<OptionalCpuId>,
     /// The runnability of this task, i.e., whether it's eligible to be scheduled in.
     ///
     /// This is not public because it permits interior mutability.
@@ -293,7 +269,7 @@ pub struct Task {
 }
 
 // Ensure that atomic fields in the `Tast` struct are actually lock-free atomics.
-const _: () = assert!(AtomicCell::<OptionU8>::is_lock_free());
+const _: () = assert!(AtomicCell::<OptionalCpuId>::is_lock_free());
 const _: () = assert!(AtomicCell::<RunState>::is_lock_free());
 
 impl fmt::Debug for Task {
@@ -363,7 +339,7 @@ impl Task {
                 preemption_guard: None,
                 drop_after_task_switch: None,
                 kstack,
-                pinned_core: None,
+                pinned_core: None.into(),
                 kill_handler: None,
                 env,
                 restart_info: None,
@@ -407,14 +383,14 @@ impl Task {
     }
 
     /// Returns the ID of the CPU this `Task` is currently running on.
-    pub fn running_on_cpu(&self) -> Option<u8> {
+    pub fn running_on_cpu(&self) -> Option<CpuId> {
         self.running_on_cpu.load().into()
     }
 
     /// Returns the ID of the CPU this `Task` is pinned on,
     /// or `None` if it is not pinned.
-    pub fn pinned_core(&self) -> Option<u8> {
-        self.inner.lock().pinned_core
+    pub fn pinned_core(&self) -> Option<CpuId> {
+        self.inner.lock().pinned_core.into()
     }
 
     /// Returns the current [`RunState`] of this `Task`.
@@ -590,7 +566,7 @@ impl Task {
 impl Drop for Task {
     fn drop(&mut self) {
         #[cfg(not(any(rq_eval, downtime_eval)))]
-        trace!("[CPU {}] Task::drop(): {}", cpu::current_cpu(), self);
+        trace!("[CPU {:?}] Task::drop(): {}", cpu::current_cpu(), self);
 
         // We must consume/drop the Task's kill handler BEFORE a Task can possibly be dropped.
         // This is because if an application task sets a kill handler that is a closure/function in the text section of the app crate itself,
@@ -642,7 +618,7 @@ impl ExposedTask {
         &self.tls_area
     }
     #[inline(always)]
-    pub fn running_on_cpu(&self) -> &AtomicCell<OptionU8> {
+    pub fn running_on_cpu(&self) -> &AtomicCell<OptionalCpuId> {
         &self.running_on_cpu
     }
     #[inline(always)]

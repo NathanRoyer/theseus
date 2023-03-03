@@ -50,6 +50,7 @@ use preemption::PreemptionGuard;
 use spin::Mutex;
 use stack::Stack;
 use task_struct::ExposedTask;
+use cpu::CpuId;
 
 
 // Re-export main types from `task_struct`.
@@ -604,7 +605,7 @@ pub fn take_kill_handler() -> Option<KillHandler> {
 /// the given `next` `Task`'s inner state in order to mutate them.
 pub fn task_switch(
     next: TaskRef,
-    apic_id: u8,
+    apic_id: CpuId,
     preemption_guard: PreemptionGuard,
 ) -> (bool, PreemptionGuard) {
 
@@ -738,7 +739,7 @@ type TaskSwitchInnerRet = (*mut usize, usize, SimdExt, SimdExt);
 fn task_switch_inner(
     curr_task_tls_slot: &mut Option<TaskRef>,
     next: TaskRef,
-    apic_id: u8,
+    apic_id: CpuId,
     preemption_guard: PreemptionGuard,
 ) -> Result<TaskSwitchInnerRet, (bool, PreemptionGuard)> {
     let Some(ref curr) = curr_task_tls_slot else {
@@ -1018,7 +1019,7 @@ mod tls_current_task {
 /// ## Note
 /// This function does not add the new task to any runqueue.
 pub fn bootstrap_task(
-    apic_id: u8, 
+    apic_id: CpuId, 
     stack: NoDrop<Stack>,
     kernel_mmi_ref: MmiRef,
 ) -> Result<(JoinableTaskRef, ExitableTaskRef), &'static str> {
@@ -1035,7 +1036,7 @@ pub fn bootstrap_task(
             app_crate: None,
         },
     )?;
-    bootstrap_task.name = format!("bootstrap_task_core_{apic_id}");
+    bootstrap_task.name = format!("bootstrap_task_core_{apic_id:?}");
     let bootstrap_task_id = bootstrap_task.id;
     let joinable_taskref = TaskRef::create(
         bootstrap_task,
@@ -1044,14 +1045,14 @@ pub fn bootstrap_task(
     // Update other relevant states for this new bootstrapped task.
     joinable_taskref.0.task.runstate().store(RunState::Runnable);
     joinable_taskref.0.task.running_on_cpu().store(Some(apic_id).into()); 
-    joinable_taskref.0.task.inner().lock().pinned_core = Some(apic_id); // can only run on this CPU core
+    joinable_taskref.0.task.inner().lock().pinned_core = Some(apic_id).into(); // can only run on this CPU core
     // Set this task as this CPU's current task, as it's already running.
     joinable_taskref.set_as_current_task();
     let Ok(exitable_taskref) = init_current_task(
         bootstrap_task_id, 
         Some(joinable_taskref.clone()),
     ) else {
-        error!("BUG: failed to set boostrapped task as current task on AP {}", apic_id);
+        error!("BUG: failed to set boostrapped task as current task on AP {:?}", apic_id);
         // Don't drop the bootstrap task upon error, because it contains the stack
         // used for the currently running code -- that would trigger an exception.
         let _task_ref = NoDrop::new(joinable_taskref);

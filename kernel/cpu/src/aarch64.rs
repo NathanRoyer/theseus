@@ -31,10 +31,10 @@ pub fn cpu_count() -> u32 {
 
 /// Returns the ID of the bootstrap CPU (if known), which
 /// is the first CPU to run after system power-on.
-pub fn bootstrap_cpu() -> CpuId {
+pub fn bootstrap_cpu() -> Option<CpuId> {
     // The ARM port doesn't start secondary cores for the moment,
     // so the current CPU can only be the "bootstrap" CPU.
-    current_cpu()
+    Some(current_cpu())
 }
 
 /// Returns true if the currently executing CPU is the bootstrap

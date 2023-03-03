@@ -6,22 +6,23 @@
 
 extern crate alloc;
 #[macro_use] extern crate log;
+extern crate cpu;
 extern crate task;
 extern crate runqueue;
 extern crate runqueue_round_robin;
 
 use task::TaskRef;
 use runqueue_round_robin::RunQueue;
-
+use cpu::CpuId;
 
 /// This defines the round robin scheduler policy.
 /// Returns None if there is no schedule-able task
-pub fn select_next_task(apic_id: u8) -> Option<TaskRef> {
+pub fn select_next_task(apic_id: CpuId) -> Option<TaskRef> {
 
     let mut runqueue_locked = match RunQueue::get_runqueue(apic_id) {
         Some(rq) => rq.write(),
         _ => {
-            error!("BUG: select_next_task_round_robin(): couldn't get runqueue for core {}", apic_id); 
+            error!("BUG: select_next_task_round_robin(): couldn't get runqueue for core {:?}", apic_id); 
             return None;
         }
     };

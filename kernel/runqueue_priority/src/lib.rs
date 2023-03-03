@@ -10,6 +10,7 @@ extern crate alloc;
 extern crate mutex_preemption;
 extern crate atomic_linked_list;
 extern crate task;
+extern crate cpu;
 
 #[cfg(single_simd_task_optimization)]
 extern crate single_simd_task_optimization;
@@ -18,6 +19,7 @@ use alloc::collections::VecDeque;
 use mutex_preemption::RwLockPreempt;
 use atomic_linked_list::atomic_map::AtomicMap;
 use task::TaskRef;
+use cpu::CpuId;
 use core::ops::{Deref, DerefMut};
 
 pub const MAX_PRIORITY: u8 = 40;
@@ -82,7 +84,7 @@ impl PriorityTaskRef {
 
 /// There is one runqueue per core, each core only accesses its own private runqueue
 /// and allows the scheduler to select a task from that runqueue to schedule in.
-static RUNQUEUES: AtomicMap<u8, RwLockPreempt<RunQueue>> = AtomicMap::new();
+static RUNQUEUES: AtomicMap<CpuId, RwLockPreempt<RunQueue>> = AtomicMap::new();
 
 /// A list of references to `Task`s (`PriorityTaskRef`s) 
 /// that is used to store the `Task`s (and associated scheduler related data) 
@@ -91,7 +93,7 @@ static RUNQUEUES: AtomicMap<u8, RwLockPreempt<RunQueue>> = AtomicMap::new();
 /// `Runqueue` implements `Deref` and `DerefMut` traits, which dereferences to `VecDeque`.
 #[derive(Debug)]
 pub struct RunQueue {
-    core: u8,
+    core: CpuId,
     queue: VecDeque<PriorityTaskRef>,
 }
 
@@ -127,16 +129,16 @@ impl RunQueue {
     }
 
     /// Creates a new `RunQueue` for the given core, which is an `apic_id`
-    pub fn init(which_core: u8) -> Result<(), &'static str> {
+    pub fn init(which_core: CpuId) -> Result<(), &'static str> {
         #[cfg(not(loscd_eval))]
-        trace!("Created runqueue (priority) for core {}", which_core);
+        trace!("Created runqueue (priority) for core {:?}", which_core);
         let new_rq = RwLockPreempt::new(RunQueue {
             core: which_core,
             queue: VecDeque::new(),
         });
 
         if RUNQUEUES.insert(which_core, new_rq).is_some() {
-            error!("BUG: RunQueue::init(): runqueue already exists for core {}!", which_core);
+            error!("BUG: RunQueue::init(): runqueue already exists for core {:?}!", which_core);
             Err("runqueue already exists for this core")
         }
         else {
@@ -146,13 +148,13 @@ impl RunQueue {
     }
 
     /// Returns `RunQueue` for the given core, which is an `apic_id`.
-    pub fn get_runqueue(which_core: u8) -> Option<&'static RwLockPreempt<RunQueue>> {
+    pub fn get_runqueue(which_core: CpuId) -> Option<&'static RwLockPreempt<RunQueue>> {
         RUNQUEUES.get(&which_core)
     }
 
 
     /// Returns the "least busy" core, which is currently very simple, based on runqueue size.
-    pub fn get_least_busy_core() -> Option<u8> {
+    pub fn get_least_busy_core() -> Option<CpuId> {
         Self::get_least_busy_runqueue().map(|rq| rq.read().core)
     }
 
@@ -189,7 +191,7 @@ impl RunQueue {
     }
 
     /// Convenience method that adds the given `Task` reference to given core's runqueue.
-    pub fn add_task_to_specific_runqueue(which_core: u8, task: TaskRef) -> Result<(), &'static str> {
+    pub fn add_task_to_specific_runqueue(which_core: CpuId, task: TaskRef) -> Result<(), &'static str> {
         RunQueue::get_runqueue(which_core)
             .ok_or("Couldn't get RunQueue for the given core")?
             .write()
@@ -199,7 +201,7 @@ impl RunQueue {
     /// Adds a `TaskRef` to this RunQueue.
     fn add_task(&mut self, task: TaskRef) -> Result<(), &'static str> {        
         #[cfg(not(loscd_eval))]
-        debug!("Adding task to runqueue_priority {}, {:?}", self.core, task);
+        debug!("Adding task to runqueue_priority {:?}, {:?}", self.core, task);
         let priority_task_ref = PriorityTaskRef::new(task);
         self.push_back(priority_task_ref);
         
@@ -217,7 +219,7 @@ impl RunQueue {
 
     /// Removes a `TaskRef` from this RunQueue.
     pub fn remove_task(&mut self, task: &TaskRef) -> Result<(), &'static str> {
-        debug!("Removing task from runqueue_priority {}, {:?}", self.core, task);
+        debug!("Removing task from runqueue_priority {:?}, {:?}", self.core, task);
         self.retain(|x| &x.taskref != task);
 
         #[cfg(single_simd_task_optimization)] {   

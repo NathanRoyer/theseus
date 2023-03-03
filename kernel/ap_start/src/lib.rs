@@ -24,6 +24,7 @@ use stack::Stack;
 use kernel_config::memory::KERNEL_STACK_SIZE_IN_PAGES;
 use apic::LocalApic;
 use no_drop::NoDrop;
+use cpu::CpuId;
 
 /// An atomic flag used for synchronizing progress between the BSP 
 /// and the AP that is currently being booted.
